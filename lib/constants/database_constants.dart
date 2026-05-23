@@ -1,0 +1,1 @@
+const movimientoDB = {'table': 'movimientos'};
