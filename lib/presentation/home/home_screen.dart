@@ -12,7 +12,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final MovimientoRepository repository = MovimientoRepository();
+
   List<MovimientoModel> movimientos = [];
+
   bool isLoading = false;
 
   @override
@@ -21,29 +23,51 @@ class _HomeScreenState extends State<HomeScreen> {
     getData();
   }
 
-  Future getData() async {
-    isLoading = true;
-    setState(() {});
+  Future<void> getData() async {
+    setState(() {
+      isLoading = true;
+    });
+
     movimientos = await repository.getMovimientos();
-    isLoading = false;
-    setState(() {});
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
-  Future insertMovimiento(BuildContext context) async {
-    isLoading = true;
-    setState(() {});
+  Future<void> insertMovimiento(BuildContext context) async {
+    setState(() {
+      isLoading = true;
+    });
+
     final movimiento = MovimientoModel(
       tipo: 'gasto',
       descripcion: 'Compra comida',
       valor: 50000,
       fecha: DateTime.now().toString(),
     );
-    int insert = await repository.insertMovimiento(movimiento);
+
+    final insert = await repository.insertMovimiento(movimiento);
+
+    await getData();
+
+    if (!context.mounted) return;
 
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('Movimiento insertado: $insert')));
-    getData();
+  }
+
+  Future<void> eliminarMovimiento(int id) async {
+    await repository.deleteMovimiento(id);
+  }
+
+  Future<void> actualizarMovimiento(MovimientoModel movimiento) async {
+    movimiento.descripcion = 'Editado';
+    movimiento.tipo = 'ingreso';
+    print(movimiento.toMap());
+    await repository.updateMovimiento(movimiento);
+    await getData();
   }
 
   @override
@@ -53,18 +77,111 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () => insertMovimiento(context),
         child: const Icon(Icons.add),
       ),
+
       body: isLoading
           ? const Center(
               child: SpinKitFadingCircle(color: Colors.blue, size: 50),
             )
           : ListView.builder(
-              shrinkWrap: true,
               itemCount: movimientos.length,
+
               itemBuilder: (context, index) {
                 final movimiento = movimientos[index];
-                return ListTile(
-                  title: Text(movimiento.descripcion),
-                  subtitle: Text(movimiento.fecha),
+
+                return Dismissible(
+                  key: ValueKey(movimiento.id),
+
+                  // 👉 izquierda -> derecha
+                  background: Container(
+                    color: Colors.green,
+                    alignment: Alignment.centerLeft,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.edit, color: Colors.white),
+                  ),
+
+                  // 👈 derecha -> izquierda
+                  secondaryBackground: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+
+                  confirmDismiss: (direction) async {
+                    // 👉 EDITAR
+                    if (direction == DismissDirection.startToEnd) {
+                      print('----------->');
+                      await actualizarMovimiento(movimiento);
+
+                      if (!context.mounted) return false;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("Editar ${movimiento.descripcion}"),
+                        ),
+                      );
+
+                      // Cancela el dismiss
+                      return false;
+                    }
+
+                    // 👈 ELIMINAR
+                    if (direction == DismissDirection.endToStart) {
+                      return await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text("Eliminar"),
+                          content: Text("¿Eliminar ${movimiento.descripcion}?"),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context, false);
+                              },
+                              child: const Text("Cancelar"),
+                            ),
+
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pop(context, true);
+                              },
+                              child: const Text("Eliminar"),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return false;
+                  },
+
+                  onDismissed: (direction) async {
+                    if (direction == DismissDirection.endToStart) {
+                      final eliminado = movimiento;
+
+                      // Eliminar visualmente PRIMERO
+                      setState(() {
+                        movimientos.removeAt(index);
+                      });
+
+                      // Luego BD
+                      await eliminarMovimiento(eliminado.id!);
+
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text("${eliminado.descripcion} eliminado"),
+                        ),
+                      );
+                    }
+                  },
+
+                  child: ListTile(
+                    title: Text(movimiento.descripcion),
+
+                    subtitle: Text(movimiento.fecha),
+
+                    trailing: Text("\$ ${movimiento.valor}"),
+                  ),
                 );
               },
             ),
