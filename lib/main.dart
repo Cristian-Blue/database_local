@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:local/helpers/database_helper.dart';
-import 'package:local/presentation/home/home_screen.dart';
+import 'package:local/presentation/gasto/gasto_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const GastoScreen(),
     );
   }
 }
