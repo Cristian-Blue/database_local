@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:local/models/movimiento_model.dart';
+import 'package:local/presentation/shared/widgets/drawer_widget.dart';
 import 'package:local/repository/movimiento_repository.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -73,6 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Home')),
+      drawer: DrawerWidget(),
       floatingActionButton: FloatingActionButton(
         onPressed: () => insertMovimiento(context),
         child: const Icon(Icons.add),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:local/config/router/router.dart';
+import 'package:local/config/theme/app_theme.dart';
 import 'package:local/helpers/database_helper.dart';
 import 'package:local/presentation/gasto/gasto_screen.dart';
 
@@ -13,13 +15,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const GastoScreen(),
+      theme: AppTheme(selectedColor: 1).themeData(),
+      routerConfig: appRoute,
+      debugShowCheckedModeBanner: false,
     );
   }
 }

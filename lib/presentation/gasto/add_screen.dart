@@ -6,6 +6,7 @@ import 'package:local/repository/movimiento_repository.dart';
 
 class AddScreen extends StatefulWidget {
   final Function update;
+
   const AddScreen({super.key, required this.update});
 
   @override
@@ -14,6 +15,7 @@ class AddScreen extends StatefulWidget {
 
 class _AddScreenState extends State<AddScreen> {
   final MovimientoRepository repository = MovimientoRepository();
+
   final _formKey = GlobalKey<FormState>();
 
   final _descripcionController = TextEditingController();
@@ -21,6 +23,8 @@ class _AddScreenState extends State<AddScreen> {
 
   String _tipo = 'ingreso';
   DateTime _fecha = DateTime.now();
+
+  bool isLoading = false;
 
   Future<void> _seleccionarFecha() async {
     final fechaSeleccionada = await showDatePicker(
@@ -37,8 +41,12 @@ class _AddScreenState extends State<AddScreen> {
     }
   }
 
-  void _guardar(BuildContext context) async {
+  Future<void> _guardar(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      isLoading = true;
+    });
 
     final movimiento = {
       "tipo": _tipo,
@@ -50,12 +58,17 @@ class _AddScreenState extends State<AddScreen> {
     final insert = await repository.insertMovimiento(
       MovimientoModel.fromMap(movimiento),
     );
+
+    if (!mounted) return;
+
     CustomSnackBar.show(
       context,
       message: insert > 0 ? message['insert']! : message['error']!,
       type: insert > 0 ? SnackType.success : SnackType.error,
     );
+
     widget.update();
+
     Navigator.pop(context, movimiento);
   }
 
@@ -69,102 +82,234 @@ class _AddScreenState extends State<AddScreen> {
   @override
   Widget build(BuildContext context) {
     return FractionallySizedBox(
-      heightFactor: 0.8,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              children: [
-                const Text(
-                  "Insertar movimiento",
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-                DropdownButtonFormField<String>(
-                  initialValue: _tipo,
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo',
-                    border: OutlineInputBorder(),
+      heightFactor: .92,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xffF4F6FA),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Center(
+                child: Container(
+                  width: 60,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'ingreso', child: Text('Ingreso')),
-                    DropdownMenuItem(value: 'gasto', child: Text('Gasto')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _tipo = value!;
-                    });
-                  },
                 ),
+              ),
 
-                const SizedBox(height: 16),
+              const SizedBox(height: 25),
 
-                TextFormField(
-                  controller: _descripcionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Descripción',
-                    border: OutlineInputBorder(),
+              Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    shape: BoxShape.circle,
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Ingrese una descripción';
-                    }
-                    return null;
-                  },
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 40,
+                    color: Colors.indigo,
+                  ),
                 ),
+              ),
 
-                const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-                TextFormField(
-                  controller: _valorController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Valor',
-                    border: OutlineInputBorder(),
-                    prefixText: '\$ ',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Ingrese un valor';
-                    }
-
-                    if (double.tryParse(value) == null) {
-                      return 'Valor inválido';
-                    }
-
-                    return null;
-                  },
+              const Center(
+                child: Text(
+                  "Nuevo Movimiento",
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                 ),
+              ),
 
-                const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
-                InkWell(
-                  onTap: _seleccionarFecha,
-                  child: InputDecorator(
-                    decoration: const InputDecoration(
-                      labelText: 'Fecha',
-                      border: OutlineInputBorder(),
-                      suffixIcon: Icon(Icons.calendar_month),
+              Center(
+                child: Text(
+                  "Registra un ingreso o un gasto",
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+                ),
+              ),
+
+              const SizedBox(height: 30),
+
+              DropdownButtonFormField<String>(
+                value: _tipo,
+                decoration: InputDecoration(
+                  labelText: 'Tipo de movimiento',
+                  filled: true,
+                  fillColor: Colors.white,
+                  prefixIcon: Icon(
+                    _tipo == 'ingreso'
+                        ? Icons.arrow_upward_rounded
+                        : Icons.arrow_downward_rounded,
+                    color: _tipo == 'ingreso' ? Colors.green : Colors.red,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'ingreso', child: Text('Ingreso')),
+                  DropdownMenuItem(value: 'gasto', child: Text('Gasto')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _tipo = value!;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              TextFormField(
+                controller: _descripcionController,
+                decoration: InputDecoration(
+                  labelText: 'Descripción',
+                  prefixIcon: const Icon(Icons.description_outlined),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Ingrese una descripción';
+                  }
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              TextFormField(
+                controller: _valorController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Valor',
+                  prefixIcon: const Icon(Icons.attach_money_rounded),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Ingrese un valor';
+                  }
+
+                  if (double.tryParse(value) == null) {
+                    return 'Valor inválido';
+                  }
+
+                  if (double.parse(value) <= 0) {
+                    return 'Debe ser mayor a cero';
+                  }
+
+                  return null;
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: _seleccionarFecha,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 18,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_month_rounded,
+                        color: Colors.indigo,
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: Text(
+                          '${_fecha.day}/${_fecha.month}/${_fecha.year}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ),
+
+                      const Icon(Icons.chevron_right, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 35),
+
+              SizedBox(
+                height: 58,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: const LinearGradient(
+                      colors: [Colors.indigo, Color(0xff5C6BC0)],
                     ),
-                    child: Text('${_fecha.day}/${_fecha.month}/${_fecha.year}'),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.indigo.withOpacity(.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                ),
-
-                const SizedBox(height: 30),
-
-                SizedBox(
-                  height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () => _guardar(context),
-                    icon: const Icon(Icons.save),
-                    label: const Text('Guardar'),
+                    onPressed: isLoading ? null : () => _guardar(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                    ),
+                    icon: isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_rounded, color: Colors.white),
+                    label: Text(
+                      isLoading ? 'Guardando...' : 'Guardar Movimiento',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 25),
+            ],
           ),
         ),
       ),

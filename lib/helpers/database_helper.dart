@@ -19,6 +19,19 @@ class DatabaseHelper {
     ''');
   }
 
+  Future _updateDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+      CREATE TABLE usuarios(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT,
+        email TEXT,
+        password TEXT
+          )
+      ''');
+    }
+  }
+
   factory DatabaseHelper() {
     return _instance;
   }
@@ -27,7 +40,12 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _updateDB,
+    );
   }
 
   Future<Database> get database async {
